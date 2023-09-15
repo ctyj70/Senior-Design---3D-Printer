@@ -1,0 +1,5 @@
+@ECHO OFF
+
+python "C:\Users\Connor\Documents\CSSE\CSSE\Code\G-Code-Converter\G-converter.py"
+
+PAUSE
