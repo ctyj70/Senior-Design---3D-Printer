@@ -14,6 +14,7 @@ def scanner (inputFile):
         for line in fileRead:
             printLine(line)
 
+# Processes G-Code and/or M-Code and writes them to an output file
 def printLine(line):
     with open(outputFile,'a') as fileAppend:
 
