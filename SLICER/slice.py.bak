@@ -1,20 +1,26 @@
 #!/usr/bin/python3
 import numpy as np
 from stl import mesh
+import matplotlib
+matplotlib.use("Qt5Agg")
 import matplotlib.pyplot as plt
 from mpl_toolkits import mplot3d
 import heapq
 import math
+from threading import Thread
 import os
 from tqdm import tqdm
 
-class slice:
+# Global Var for handling threads.
+renderPlot = True 
 
+class slice:
+    
     #TODO
-    # 1) get verticies needs conditionals to deal with duplicates
+    # 1) get verticies needs conditionals to deal with duplicates (Already solved?)
     # 2) line calculation
     # 3) dikstras algorithm
-
+    
     def __init__(self, obj:mesh, extrusion_size, step_size):
         self.obj = obj
         self.extrusion_size = extrusion_size # diameter of extrusion beed
@@ -44,6 +50,7 @@ class slice:
         for i in self.obj.v2:
             if not self.is_in(i, verticies):
                 verticies.append(i)
+
         self.model = verticies
         return verticies
     
@@ -234,22 +241,23 @@ class slice:
     #=====================================================================================================================
   
     def simulate(self):
+        global renderPlot
 
         fig = plt.figure()
         ax = fig.add_subplot(111, projection='3d')
 
         layer_count = len(self.extrusion_paths)
         pbar = tqdm(total=layer_count, desc="simulation")
-        checkInc = 0
-        for path in self.extrusion_paths:
-            for point in path:
+        for path in self.extrusion_paths: #layers
+            for point in path: #individual points
                 ax.scatter(point[0], point[1], point[2])
                 plt.draw()
                 plt.show(block=False)
             pbar.update(1)
-            plt.pause(0.0001)
+            plt.pause(0.1)
         pbar.close()
-
+        
+    
     def show_model(self, show_mine=True):
         if show_mine:
             x,y,z = [],[],[]
@@ -261,7 +269,7 @@ class slice:
             ax = plt.axes(projection='3d')
             #ax.set_box_aspect((np.ptp(x), np.ptp(y), np.ptp(z))) # uncomment for exact proportions
             ax.scatter3D(x,y,z)
-            plt.show()
+            plt.figure()
         else:
             # Create a new plot
             figure = plt.figure()
@@ -307,6 +315,14 @@ class slice:
 
         self.generate_gcode()
 
+    def systemWait():
+        global renderPlot
+    
+        print("Simulation Finished!")
+        os.system("pause")
+        renderPlot = False
+        
+
 path = os.getcwd()
 modelName = ''
 INPUTNAME = 'INPUT STL FILE HERE'
@@ -327,6 +343,13 @@ else:
     answer = input()
     if (answer.capitalize() == "Y"):
         slicer.simulate()
-        print("Simulation Finished!")
-        os.system("pause")
+        bonusThread = Thread(target=slice.systemWait)
+        bonusThread.start() # Will have to solve issue of matlib fucking over later
+        #slicer.show_model()
+        while (renderPlot):
+            plt.draw()
+            plt.show(block=False)
+            plt.pause(10)
+        plt.close()
+        
 
