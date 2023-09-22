@@ -8,7 +8,7 @@ inputFile = './failed.gcode'
 radius:float = 84.5 #units are mm
 previousZ:float = 0.0
 
-
+# Takes an input file and opens it, reading each line in the file
 def scanner (inputFile):
     with open(inputFile,'r') as fileRead:
         for line in fileRead:
@@ -16,16 +16,20 @@ def scanner (inputFile):
 
 def printLine(line):
     with open(outputFile,'a') as fileAppend:
+
         #check first character for comment
         if (line[0] == ';'):
             pass
+
         #check first character for new line/white space
         elif line[0] == '\n' or line[0] == '' or line[0] == ' ':
             pass
+
         #check first character for G code
         elif line[0] == 'G':
             line = convertCoordinates(line)
             fileAppend.write(f'\n{line}')
+
         #check for M code
         elif line[0] == 'M':
             line = convertCoordinates(line)
@@ -34,6 +38,9 @@ def printLine(line):
         else: 
             fileAppend.write(f'\t\t{line}')
 
+# Processes G-code lines wth G1 commands, converts specific coordinates
+# and updates them, while also handling comments and other cases by
+# preserving/appending them to output string
 def convertCoordinates(line):
     split = line.split()
     copy = split
@@ -75,16 +82,22 @@ def convertCoordinates(line):
         result = line
     return result
 
+# Performs a conversion between units used in G Code and degrees
+# (Most likely for scaling factor/dimensions for 3D Printer)
 def _convertDegree(input:float):
     global radius
     return (input/radius)*(180/numpy.pi)
 
+# Keeps 'radius' variable updated based on changes to Z-axis coordinate.
 def _updateRadius(new:float):
     global radius
     global previousZ
     diff = new - previousZ
     radius += diff
 
+# Processes G Code files found in a specific folder, clear contents of
+# an output file (if it exists and isn't empty), and move both input and output
+# files to seperate folders.
 if __name__ == '__main__':
     #inputFile = input("path to file:\n")
     path = os.getcwd()
@@ -102,7 +115,8 @@ if __name__ == '__main__':
     if os.path.isfile(outputFile):
         if os.path.getsize(outputFile) > 0:
             open(outputFile,'w').close()
-    
+
+    # Handles Error when no input file is found.
     if (fileName == ''):
         print("ERROR -- NO FILE INPUT INTO FOLDER\nINSERT G-CODE IN \"INPUT G-CODE HERE\"")
     else:
