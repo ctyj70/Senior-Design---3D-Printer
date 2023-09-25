@@ -344,12 +344,12 @@ else:
     if (answer.capitalize() == "Y"):
         slicer.simulate()
         bonusThread = Thread(target=slice.systemWait)
-        bonusThread.start() # Will have to solve issue of matlib fucking over later
+        bonusThread.start()
         #slicer.show_model()
         while (renderPlot):
             plt.draw()
             plt.show(block=False)
-            plt.pause(5)
+            plt.pause(1)
         plt.close()
         
 
