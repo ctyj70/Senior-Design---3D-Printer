@@ -1,5 +1,6 @@
 import os
 import numpy
+import shutil
 
 outputFile = 'example.txt'
 inputFile = './failed.gcode'
@@ -121,8 +122,16 @@ if __name__ == '__main__':
     if (fileName == ''):
         print("ERROR -- NO FILE INPUT INTO FOLDER\nINSERT G-CODE IN \"INPUT G-CODE HERE\"")
     else:
+        print("Starting Conversion Process...")
         scanner(inputFile)
         os.replace(inputFile, path + r'\\G-Code (Finished)\\' + fileName)
-        os.replace(outputFile, path + r'\\G-Code (Translated)\\' + fileName.replace('.gcode','.txt'))
-        print("Conversion Finished!")
+        
+        print("Conversion Finished! Package G-Code?[Y/N]")
+        answer = input()
+        if (answer.capitalize() == "Y"):
+            os.mkdir(path + "\\" + fileName + " Runtime Package")
+            os.replace(outputFile, path + "\\" + fileName + " Runtime Package" + "\\" + fileName.replace('.gcode','.g'))
+            shutil.copyfile(path + "\\Config Storage\\config.g", path + "\\" + fileName + " Runtime Package" + r"\\config.g")
+        else:
+            os.replace(outputFile, path + r'\\G-Code (Translated)\\' + fileName.replace('.gcode','.txt'))
     

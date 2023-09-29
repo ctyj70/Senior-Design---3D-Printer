@@ -6,6 +6,7 @@ matplotlib.use("Qt5Agg")
 import matplotlib.pyplot as plt
 from mpl_toolkits import mplot3d
 import heapq
+import sys
 import math
 from threading import Thread
 import os
@@ -90,6 +91,14 @@ class slice:
             layer = []
             for p in self.model:
                 if p[2] == zlayer:
+                    """
+                    Will improve in the future
+                    tempZAXIS = p[-1:]
+                    print("point:")
+                    p = np.delete(p, 2)
+                    p = np.append(p, round(tempZAXIS[0],1))
+                    print(p)
+                    """
                     layer.append(p)
             
             self.raw_layers.append(layer)
@@ -139,14 +148,21 @@ class slice:
                     if not self.is_in(new_line_below, self.layer_lines) and not self.is_in(new_line[::-1], self.layer_lines):
                         self.layer_lines.append(new_line_below)
                         print(new_line)
-
         #print(np.array(self.layer_lines).shape)
         
     
     def calculate_extrusion_layers(self):
         height = abs(self.raw_layers[-1][-1][-1])
         self.extrusion_layers = [i for i in np.arange(0, height, self.extrusion_size)]
-
+        """
+        for point in self.raw_layers:
+            if not point[-1][-1] in self.extrusion_layers:
+                tempInt = 0
+                while not tempInt > len(self.extrusion_layers) - 1 and point[-1][-1] > self.extrusion_layers[tempInt]: # [!] Fix this loop later
+                    tempInt += 1
+                    print("test")
+                self.extrusion_layers.insert(tempInt, point[-1][-1])
+        """
     def normal(point1, point2, point3):
         vector1 = point2 - point1
         vector2 = point3 - point1
@@ -163,7 +179,9 @@ class slice:
             plane = []
             for line in self.layer_lines:
 
-                point1, point2, z = line[0], line[1], z_plane
+                point1 = line[0] 
+                point2 = line[1] 
+                z = z_plane
 
                 if point1[2] == point2[2]:
                     print("The line is parallel to the z-plane")
@@ -180,24 +198,35 @@ class slice:
     def total_distance(self, points, order):
         return sum(self.euclidian_distance(points[i], points[j]) for i, j in zip(order, order[1:] + [order[0]]))
 
-    # too slow, going with greedy method for now
+    # was originally too slow to do
+    # this was due to utilizing dijkstra's to check
+    # EVERY possible pathing, which is incredibly difficult and tedious.
+    # we use a "shallow dijkstra" which sets each point as having 10
+    # connections between one another.
     def two_opt(self, points):
+        endRange = len(points)
+        newPosition = []
         order = list(range(len(points)))
-        improvement = True
-        while improvement:
-            improvement = False
-            for i in range(1, len(points) - 1):
-                for j in range(i + 1, len(points)):
-                    if j - i == 1:
-                        continue
-                    new_order = order[:i] + order[i:j][::-1] + order[j:]
-                    new_distance = self.total_distance(points, new_order)
-                    if new_distance < self.total_distance(points, order):
-                        order = new_order
-                        improvement = True
-            if improvement:
-                pass#print(f"Improved distance: {self.total_distance(points, order)}")
-        return order
+        improvement = False
+        #print("Total Size:\n" + str(len(points)))
+        for i in range(1, len(points) - 1):
+            if (10 > len(points) - (i + 1)):
+                endRange = len(points)
+            else:
+                endRange = i + 10
+            for j in range(i + 1, endRange):
+                if j - i == 1:
+                    continue
+                new_order = order[:i] + order[i:j][::-1] + order[j:]
+                new_distance = self.total_distance(points, new_order)
+                if new_distance < self.total_distance(points, order):
+                    order = new_order
+                    improvement = True
+        #if improvement:
+            #print(f"Improved distance: {self.total_distance(points, order)}\n")
+        for position in order:
+            newPosition.append(points[position])
+        return newPosition
     
     def closest_point(self, current_point, points):
         min_dist = float('inf')
@@ -217,23 +246,28 @@ class slice:
             visited.append(closest)
             unvisited.remove(closest)
         return visited
-            
-            
-        
-        return path
 
     def do_dikstras_on_layers(self):
-
+        #self.show_linesandlayers()
         intersection_points = self.get_intersections()
-
+        #self.show_intersection()
+        
         print(rf"Finding Optimal Printing Path: {len(intersection_points)} Total Layers")
         pbar = tqdm(total=len(intersection_points), desc="layer")
-
-        #[cross_section[p] for p in self.two_opt(cross_section)]
+        sectionPath = []
+        tempSection = []
+        previousSection = []
+        
         for cross_section in intersection_points:
-            #print(self.greedy(cross_section))
-            #print(self.greedy(cross_section))
-            self.extrusion_paths.append(np.array(self.greedy(cross_section)))
+            #tempSection = cross_section.copy()
+            # [!!] make this work with a temp variable
+            #print(previousSection)
+            #print(tempSection.sort() == previousSection.sort())
+            #if not (tempSection.sort() == previousSection.sort() and len(previousSection) > 0):
+            sectionPath = self.two_opt(cross_section)
+            self.extrusion_paths.append(np.array(sectionPath))
+            # print(previousSection == cross_section)
+            previousSection = cross_section
             pbar.update(1)
         pbar.close()
         #return np.array(self.extrusion_paths)
@@ -242,7 +276,10 @@ class slice:
   
     def simulate(self):
         global renderPlot
-
+        initalPoint = []
+        storedPointX = []
+        storedPointY = []
+        storedX = 0
         fig = plt.figure()
         ax = fig.add_subplot(111, projection='3d')
 
@@ -250,11 +287,50 @@ class slice:
         pbar = tqdm(total=layer_count, desc="simulation")
         for path in self.extrusion_paths: #layers
             for point in path: #individual points
-                ax.scatter(point[0], point[1], point[2])
+                # Line Checker
+                # [!!] Add some checks here to ensure the lines look
+                # a little more broken up
+                #"""
+                """
+                storedZ = point[2]
+                if (len(initalPoint) == 0): initalPoint = point
+                if (len(storedPointX) == 0):
+                    storedPointX.append(point[0])
+                    storedPointY.append(point[1])
+                elif not (abs(point[0] - storedPointX[-1]) + abs(point[1] - storedPointY[-1]) > 50):
+                    storedPointX.append(point[0])
+                    storedPointY.append(point[1])
+                else:
+                    if (len(storedPointX) > 1):
+                        ax.plot(storedPointX,storedPointY, storedZ, zdir='z', linestyle = 'solid')
+                    
+                    ax.scatter(point[0], point[1], point[2])
+                    storedPointX = []
+                    storedPointY = []
+                    storedZ = 0
+                    initalPoint = []
+                """
+                if (len(initalPoint) == 0): initalPoint = point
+                storedPointX.append(point[0])
+                storedPointY.append(point[1])
+                storedZ = point[2]
+                #"""
+                #ax.scatter(point[0], point[1], point[2])
                 plt.draw()
                 plt.show(block=False)
+            #"""
+            
+            storedPointX.append(initalPoint[0])
+            storedPointY.append(initalPoint[1])
+            ax.plot(storedPointX,storedPointY, storedZ, zdir='z', linestyle = 'solid')
+            #"""
             pbar.update(1)
+            storedPointX = []
+            storedPointY = []
+            storedZ = 0
+            initalPoint = []
             plt.pause(0.1)
+        
         pbar.close()
         
     
@@ -269,7 +345,7 @@ class slice:
             ax = plt.axes(projection='3d')
             #ax.set_box_aspect((np.ptp(x), np.ptp(y), np.ptp(z))) # uncomment for exact proportions
             ax.scatter3D(x,y,z)
-            plt.figure()
+            plt.show()
         else:
             # Create a new plot
             figure = plt.figure()
@@ -285,6 +361,34 @@ class slice:
             # Show the plot to the screen
             plt.show()
     
+    def show_intersection(self):
+        x,y,z = [],[],[]
+        for i in self.get_intersections():
+            x.append(i[0])
+            y.append(i[1])
+            z.append(i[2])
+        fig = plt.figure()
+        ax = plt.axes(projection='3d')
+        #ax.set_box_aspect((np.ptp(x), np.ptp(y), np.ptp(z))) # uncomment for exact proportions
+        ax.scatter3D(x,y,z)
+        plt.show()
+    
+    def show_linesandlayers(self):
+        x,y,z = [],[],[]
+        print("Now, layers")
+        print(self.layer_lines)
+        print(self.extrusion_layers)
+        """
+        for i in self.extrusion_layers:
+            x.append(i[0])
+            y.append(i[1])
+            z.append(i[2])
+        fig = plt.figure()
+        ax = plt.axes(projection='3d')
+        #ax.set_box_aspect((np.ptp(x), np.ptp(y), np.ptp(z))) # uncomment for exact proportions
+        ax.scatter3D(x,y,z)
+        plt.show()
+        """
     # path is a list of verticies the pen needs to travel between in millimeters
     # assuming that "path" is already orginized in the order the extruder should move
     # Axis: [x, y, z]
@@ -306,8 +410,8 @@ class slice:
         
         
     def main(self):
-
         self.get_vertices()
+        #self.show_model()
         self.get_raw_layers()
         self.get_line_points()
         self.calculate_extrusion_layers()
@@ -345,7 +449,6 @@ else:
         slicer.simulate()
         bonusThread = Thread(target=slice.systemWait)
         bonusThread.start()
-        #slicer.show_model()
         while (renderPlot):
             plt.draw()
             plt.show(block=False)
