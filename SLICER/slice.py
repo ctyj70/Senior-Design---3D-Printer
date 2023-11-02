@@ -91,14 +91,14 @@ class slice:
             layer = []
             for p in self.model:
                 if p[2] == zlayer:
-                    """
-                    Will improve in the future
+                    
+                    # Will improve in the future
                     tempZAXIS = p[-1:]
                     print("point:")
                     p = np.delete(p, 2)
                     p = np.append(p, round(tempZAXIS[0],1))
                     print(p)
-                    """
+                    
                     layer.append(p)
             
             self.raw_layers.append(layer)
@@ -154,7 +154,7 @@ class slice:
     def calculate_extrusion_layers(self):
         height = abs(self.raw_layers[-1][-1][-1])
         self.extrusion_layers = [i for i in np.arange(0, height, self.extrusion_size)]
-        """
+        
         for point in self.raw_layers:
             if not point[-1][-1] in self.extrusion_layers:
                 tempInt = 0
@@ -162,7 +162,7 @@ class slice:
                     tempInt += 1
                     print("test")
                 self.extrusion_layers.insert(tempInt, point[-1][-1])
-        """
+        
     def normal(point1, point2, point3):
         vector1 = point2 - point1
         vector2 = point3 - point1
@@ -185,7 +185,7 @@ class slice:
 
                 if point1[2] == point2[2]:
                     print("The line is parallel to the z-plane")
-                    return None
+                    #return None
                 
                 # Find the point of intersection with the z-plane
                 t = -point1[2] / (point2[2] - point1[2])
@@ -290,7 +290,6 @@ class slice:
                 # Line Checker
                 # [!!] Add some checks here to ensure the lines look
                 # a little more broken up
-                #"""
                 """
                 storedZ = point[2]
                 if (len(initalPoint) == 0): initalPoint = point
@@ -440,7 +439,7 @@ if modelName == '':
     os.system("pause")
 else:
     model = mesh.Mesh.from_file(os.getcwd() + '\\' + INPUTNAME + '\\' + filename)
-    os.replace(path + '\\' + INPUTNAME + '\\' + filename, path + r'\Finished Models\\' + filename)
+    #os.replace(path + '\\' + INPUTNAME + '\\' + filename, path + r'\Finished Models\\' + filename)
     slicer = slice(model, 0.5, -1)
     slicer.main()
     print("G-Code Slicing Finished. Simulate G-Code?[Y/N]")

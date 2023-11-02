@@ -11,14 +11,98 @@ previousZ:float = 0.0
 
 # Takes an input file and opens it, reading each line in the file
 def scanner (inputFile):
+    print("Insert Additional Configurations in G-Code? (Y/N)")
+    answer = input()
+    if (answer.capitalize() == "Y"):
+        printConfig(inputFile)
+    
     with open(inputFile,'r') as fileRead:
         for line in fileRead:
             printLine(line)
 
+def getInput (includedString, defaultVal):
+    answer = input()
+    if (answer == ""):
+        return includedString + defaultVal + "\n"
+    elif (answer.upper() == "SKIP"):
+        return ""
+    elif (not answer.isnumeric()):
+        print("ERROR: NON-NUMERIC INPUT")
+        return ""    
+    else:
+        return includedString + answer + "\n"
+
+def getInputArray (includedString, defaultVal):
+    repeatVal = len(includedString)
+    totalString = ""
+    for i in range(repeatVal):
+        usableString = includedString[i].strip()
+        if (usableString[0] == "M"): 
+            usableString = usableString.split()[1]
+        print("INSERT " + usableString + ":")
+        answer = input()
+        if (answer == ""):
+            totalString += includedString[i] + defaultVal[i]
+        elif (answer.upper() == "SKIP"):
+            return ""
+        elif (not answer.isnumeric()):
+            print("ERROR: NON-NUMERIC INPUT")
+            return ""
+        else:
+            totalString += includedString[i] + answer
+    return totalString + "\n"
+
+def printConfig (inputFile):
+    with open(outputFile,'a') as fileAppend:
+        print("Input the following values.\nYou may utilize a default value by pressing enter.\nYou may also skip a specific option by writing \"SKIP\".")
+        
+        # Microstepping With Interpolation
+        #fileAppend.write("M350 X4 Y2 Z1 A8 B32 E16 I1\n")
+        
+        # Probe Speed
+        print("INSERT PROBE SPEED:")
+        fileAppend.write(getInput("M558 P0 H5 F120 T","6000"))
+        
+        # Regular Maximum Speeds
+        print("INSERT REGULAR MAXIMUM SPEEDS:")
+        fileAppend.write(getInputArray(["M203 X"," Y"," Z"," A"," B"," E"], ["300.00","600.00","120.00","240.00","45.00","4.00"]))
+        
+        # Steps per unit
+        print("INSERT STEPS PER UNIT")
+        fileAppend.write(getInputArray(["M92 X"," Y"," Z"," A"," B"," E"," S"],["25.00", "5.00","25.000","2.381","1.00","6.00","1"]))
+        
+        # Maximum Instantaneous Speeds
+        print("INSERT MAXIMUM INSTANTANEOUS SPEEDS:")
+        fileAppend.write(getInputArray(["M566 X"," Y"," Z"," A"," B"," E"],["200.00","200.00","20.00","20.00","20.00","120.00"]))
+        
+        # Set Accelerations
+        #fileAppend.write("M201 X10.00 Y10.00 Z5.00 A5.00 B20.00 E250.00\n")
+        # Set Motor Currents
+        #fileAppend.write("M906 X2000 Y1000 Z2000 A2800 B2000 E800 I100\n")
+        
+        # Axis Limits (A Has no limit)
+        #fileAppend.write("M208 X0 Y-227.1 Z84.5 A-360000000 B-1 S1\n")
+        #fileAppend.write("M208 X280 Y102.9 Z287.5 A360000000 B1 S0\n")
+        
+        # Fan Power
+        print("INSERT FAN POWER (0 to 255):")
+        fileAppend.write(getInputArray(["M106 P0 S","\nM106 P1 S","\nM106 P2 S"],["255","255","255"]))
+        
+        # Temperature Settings
+        print("INSERT TEMPERATURE:")
+        fileAppend.write(getInputArray(["M143 H1 S","\nM143 H0 S"],["262","300"]))
+        
+        # Set Idle Timeout
+        print("INSERT IDLE TIMEOUT (IN SECONDS):")
+        fileAppend.write(getInput("M84 S","30"))
+
+        print("CONTINUING WITH TRANSLATION...")
+        fileAppend.close()
+        
 # Processes G-Code and/or M-Code and writes them to an output file
 def printLine(line):
     with open(outputFile,'a') as fileAppend:
-
+        
         #check first character for comment
         if (line[0] == ';'):
             pass
@@ -47,7 +131,7 @@ def convertCoordinates(line):
     split = line.split()
     copy = split
     result = ''
-
+    
     #convert G1
     if copy[0] == 'G1':
         result += copy[0]
@@ -126,7 +210,9 @@ if __name__ == '__main__':
         scanner(inputFile)
         os.replace(inputFile, path + r'\\G-Code (Finished)\\' + fileName)
         
-        print("Conversion Finished! Package G-Code?[Y/N]")
+        print("Conversion Finished!") 
+        
+        print("Package G-Code?[Y/N]")
         answer = input()
         if (answer.capitalize() == "Y"):
             os.mkdir(path + "\\" + fileName + " Runtime Package")
