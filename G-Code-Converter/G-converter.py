@@ -8,6 +8,7 @@ inputFile = './failed.gcode'
 #need to be updated as print expands
 radius:float = 84.5 #units are mm
 previousZ:float = 0.0
+lastT = -1
 
 # Takes an input file and opens it, reading each line in the file
 def scanner (inputFile):
@@ -155,7 +156,7 @@ def convertCoordinates(line):
             #convert Z to Z
             elif(_[0] == 'Z'):
                 #3DZ -> 5DY
-                _ = _.replace('Z', 'Z') #CONVERT TO Z
+                _ = _.replace('Z', 'Y') #CONVERT TO Y
                 result += (f" {_}")
                 _updateRadius(float(_[1:])) #RADIUS MAY OR MAY NOT NEED TO BE UPDATED FOR THE A PLANE ROTATION 
                                             #AS THE ROTATION IS DONT NOT BY DISTANCE TRAVELLED BUT BY DEGREE POSITION
@@ -164,6 +165,28 @@ def convertCoordinates(line):
                     result += (f"{_}")
                 else:
                     result += (f" {_}")
+    elif copy[0] == "M82": # Ignore this command when converting
+        result = ""
+    elif copy[0] == "M104" and "T" in copy[1]:
+        tValue = get_number_from_string(line, "T")
+        sValue = get_number_from_string(line, "S")
+        
+        result = "".join(["G10 P", str(int(tValue[0]) + 1), " S", sValue[
+            0], " R", str(int(sValue[0]) - 50)])
+    elif "M104 S" in line:
+        afterS = int(get_number_from_string(line, 'S')[0])
+        afterR = afterS - 50
+        if last_T != -1:
+            result = "G10 P" + str(lastT) + " S" + str(afterS) + " R" + str(afterR)
+            last_T = -1
+        else:
+            result = ""
+    elif 'T' in line:
+        for i in range(0, len(line) - 1):
+            if line[i] == 'T' and line[i + 1].isdigit():
+                lastT = int(line[i + 1]) + 1
+                result = ''
+                break
     else:
         result = line
     return result
@@ -180,6 +203,20 @@ def _updateRadius(new:float):
     global previousZ
     diff = new - previousZ
     radius += diff
+
+def get_number_from_string(string, char_before):
+    number_found, number, int_length = False, '', 0
+    for char in string:
+        if not number_found:  # This if statement looks for the first P because we know the number will be right after
+            if char == char_before:
+                number_found = True
+        else:
+            if char == ' ' or char == "\n":  # This looks for a space because once a space is found, the number has ended. This is useful in case the number is ever multiple digits.
+                break
+            else:  # This else block adds each number after the p to a string, and counts how many digits this is so that I can reconstruct the string where the number leaves off.
+                number += char
+                int_length += 1
+    return [number, int_length]
 
 # Processes G Code files found in a specific folder, clear contents of
 # an output file (if it exists and isn't empty), and move both input and output
