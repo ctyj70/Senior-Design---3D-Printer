@@ -17,10 +17,7 @@ renderPlot = True
 
 class slice:
     
-    #TODO
-    # 1) get verticies needs conditionals to deal with duplicates (Already solved?)
-    # 2) line calculation
-    # 3) dikstras algorithm
+    fullyRender = False
     
     def __init__(self, obj:mesh, extrusion_size, step_size):
         self.obj = obj
@@ -30,6 +27,7 @@ class slice:
         self.layers = [] # printable verticies for each extrusion layer
         self.layer_lines = [] # these lines are used to calculate where a point on the next layer should go
         self.extrusion_paths = []
+        renderScale = 1
 
     def is_in(self, point, verticies):
         for p in verticies:
@@ -91,14 +89,14 @@ class slice:
             layer = []
             for p in self.model:
                 if p[2] == zlayer:
-                    
+                    """
                     # Will improve in the future
                     tempZAXIS = p[-1:]
                     print("point:")
                     p = np.delete(p, 2)
                     p = np.append(p, round(tempZAXIS[0],1))
                     print(p)
-                    
+                    """
                     layer.append(p)
             
             self.raw_layers.append(layer)
@@ -154,15 +152,7 @@ class slice:
     def calculate_extrusion_layers(self):
         height = abs(self.raw_layers[-1][-1][-1])
         self.extrusion_layers = [i for i in np.arange(0, height, self.extrusion_size)]
-        
-        for point in self.raw_layers:
-            if not point[-1][-1] in self.extrusion_layers:
-                tempInt = 0
-                while not tempInt > len(self.extrusion_layers) - 1 and point[-1][-1] > self.extrusion_layers[tempInt]: # [!] Fix this loop later
-                    tempInt += 1
-                    print("test")
-                self.extrusion_layers.insert(tempInt, point[-1][-1])
-        
+
     def normal(point1, point2, point3):
         vector1 = point2 - point1
         vector2 = point3 - point1
@@ -186,23 +176,24 @@ class slice:
                 if point1[2] == point2[2]:
                     print("The line is parallel to the z-plane")
                     #return None
-                
-                # Find the point of intersection with the z-plane
-                t = -point1[2] / (point2[2] - point1[2])
-                x = point1[0] + t * (point2[0] - point1[0])
-                y = point1[1] + t * (point2[1] - point1[1])
-                plane.append([x, y, z])
+                else:
+                    # Find the point of intersection with the z-plane
+                    t = -point1[2] / (point2[2] - point1[2])
+                    x = (point1[0] + t * (point2[0] - point1[0])) * self.renderScale
+                    y = (point1[1] + t * (point2[1] - point1[1])) * self.renderScale
+                    plane.append([x, y, z * self.renderScale])
             intersection_points.append(plane)
         return intersection_points
 
     def total_distance(self, points, order):
         return sum(self.euclidian_distance(points[i], points[j]) for i, j in zip(order, order[1:] + [order[0]]))
 
-    # was originally too slow to do
-    # this was due to utilizing dijkstra's to check
+    # This was originally too slow to do.
+    # This was due to utilizing dijkstra's to check
     # EVERY possible pathing, which is incredibly difficult and tedious.
     # we use a "shallow dijkstra" which sets each point as having 10
     # connections between one another.
+    # TODO: Let user decide if they want to utilize more or less points (ala scaling)
     def two_opt(self, points):
         endRange = len(points)
         newPosition = []
@@ -259,14 +250,10 @@ class slice:
         previousSection = []
         
         for cross_section in intersection_points:
-            #tempSection = cross_section.copy()
-            # [!!] make this work with a temp variable
-            #print(previousSection)
-            #print(tempSection.sort() == previousSection.sort())
-            #if not (tempSection.sort() == previousSection.sort() and len(previousSection) > 0):
             sectionPath = self.two_opt(cross_section)
             self.extrusion_paths.append(np.array(sectionPath))
             # print(previousSection == cross_section)
+            
             previousSection = cross_section
             pbar.update(1)
         pbar.close()
@@ -282,37 +269,16 @@ class slice:
         storedX = 0
         fig = plt.figure()
         ax = fig.add_subplot(111, projection='3d')
-
+        
         layer_count = len(self.extrusion_paths)
         pbar = tqdm(total=layer_count, desc="simulation")
         for path in self.extrusion_paths: #layers
             for point in path: #individual points
-                # Line Checker
-                # [!!] Add some checks here to ensure the lines look
-                # a little more broken up
-                """
-                storedZ = point[2]
-                if (len(initalPoint) == 0): initalPoint = point
-                if (len(storedPointX) == 0):
-                    storedPointX.append(point[0])
-                    storedPointY.append(point[1])
-                elif not (abs(point[0] - storedPointX[-1]) + abs(point[1] - storedPointY[-1]) > 50):
-                    storedPointX.append(point[0])
-                    storedPointY.append(point[1])
-                else:
-                    if (len(storedPointX) > 1):
-                        ax.plot(storedPointX,storedPointY, storedZ, zdir='z', linestyle = 'solid')
-                    
-                    ax.scatter(point[0], point[1], point[2])
-                    storedPointX = []
-                    storedPointY = []
-                    storedZ = 0
-                    initalPoint = []
-                """
                 if (len(initalPoint) == 0): initalPoint = point
                 storedPointX.append(point[0])
                 storedPointY.append(point[1])
                 storedZ = point[2]
+                if (storedZ > 0 and fullyRender): ax.plot([point[0], point[0]], [storedZ, storedZ - (0.5*self.renderScale)], point[1], zdir='y', linestyle = 'solid', color = "#FFA500")
                 #"""
                 #ax.scatter(point[0], point[1], point[2])
                 plt.draw()
@@ -321,7 +287,8 @@ class slice:
             
             storedPointX.append(initalPoint[0])
             storedPointY.append(initalPoint[1])
-            ax.plot(storedPointX,storedPointY, storedZ, zdir='z', linestyle = 'solid')
+            ax.plot(storedPointX,storedPointY, storedZ, zdir='z', linestyle = 'solid', color = "b")
+            
             #"""
             pbar.update(1)
             storedPointX = []
@@ -371,23 +338,7 @@ class slice:
         #ax.set_box_aspect((np.ptp(x), np.ptp(y), np.ptp(z))) # uncomment for exact proportions
         ax.scatter3D(x,y,z)
         plt.show()
-    
-    def show_linesandlayers(self):
-        x,y,z = [],[],[]
-        print("Now, layers")
-        print(self.layer_lines)
-        print(self.extrusion_layers)
-        """
-        for i in self.extrusion_layers:
-            x.append(i[0])
-            y.append(i[1])
-            z.append(i[2])
-        fig = plt.figure()
-        ax = plt.axes(projection='3d')
-        #ax.set_box_aspect((np.ptp(x), np.ptp(y), np.ptp(z))) # uncomment for exact proportions
-        ax.scatter3D(x,y,z)
-        plt.show()
-        """
+        
     # path is a list of verticies the pen needs to travel between in millimeters
     # assuming that "path" is already orginized in the order the extruder should move
     # Axis: [x, y, z]
@@ -409,6 +360,11 @@ class slice:
         
         
     def main(self):
+        print("Welcome to the Slicer for the 5-Axis 3D Printer!")
+        print("What scale would you like this model to be sliced at? (Default: 1)")
+        self.renderScale = input()
+        if (self.renderScale == ""): self.renderScale = 1
+        else: self.renderScale = float(self.renderScale)
         self.get_vertices()
         #self.show_model()
         self.get_raw_layers()
@@ -439,12 +395,16 @@ if modelName == '':
     os.system("pause")
 else:
     model = mesh.Mesh.from_file(os.getcwd() + '\\' + INPUTNAME + '\\' + filename)
-    #os.replace(path + '\\' + INPUTNAME + '\\' + filename, path + r'\Finished Models\\' + filename)
+    os.replace(path + '\\' + INPUTNAME + '\\' + filename, path + r'\Finished Models\\' + filename)
     slicer = slice(model, 0.5, -1)
     slicer.main()
     print("G-Code Slicing Finished. Simulate G-Code?[Y/N]")
     answer = input()
     if (answer.capitalize() == "Y"):
+        print("Simulate Full Model?[Y/N] \nProgram will otherwise only simulate layers.")
+        answer = input()
+        if (answer.capitalize() == "Y"): 
+            fullyRender = True
         slicer.simulate()
         bonusThread = Thread(target=slice.systemWait)
         bonusThread.start()

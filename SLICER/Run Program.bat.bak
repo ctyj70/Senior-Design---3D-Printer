@@ -1,5 +1,0 @@
-@ECHO OFF
-
-python "C:\Users\Connor\Documents\CSSE\CSSE\Code\SLICER\slice.py"
-
-PAUSE

@@ -61,19 +61,19 @@ def printConfig (inputFile):
         #fileAppend.write("M350 X4 Y2 Z1 A8 B32 E16 I1\n")
         
         # Probe Speed
-        print("INSERT PROBE SPEED:")
+        print("INSERT PROBE SPEED\nDefault Value: 6000")
         fileAppend.write(getInput("M558 P0 H5 F120 T","6000"))
         
         # Regular Maximum Speeds
-        print("INSERT REGULAR MAXIMUM SPEEDS:")
+        print("INSERT REGULAR MAXIMUM SPEEDS\nDefault Value: 300, 600, 120, 240, 45, 4")
         fileAppend.write(getInputArray(["M203 X"," Y"," Z"," A"," B"," E"], ["300.00","600.00","120.00","240.00","45.00","4.00"]))
         
         # Steps per unit
-        print("INSERT STEPS PER UNIT")
+        print("INSERT STEPS PER UNIT\nDefault Value: 25, 5, 25, 2.381, 1, 6, 1")
         fileAppend.write(getInputArray(["M92 X"," Y"," Z"," A"," B"," E"," S"],["25.00", "5.00","25.000","2.381","1.00","6.00","1"]))
         
         # Maximum Instantaneous Speeds
-        print("INSERT MAXIMUM INSTANTANEOUS SPEEDS:")
+        print("INSERT MAXIMUM INSTANTANEOUS SPEEDS\nDefault Value: 200, 200, 20, 20, 20, 120")
         fileAppend.write(getInputArray(["M566 X"," Y"," Z"," A"," B"," E"],["200.00","200.00","20.00","20.00","20.00","120.00"]))
         
         # Set Accelerations
@@ -86,15 +86,15 @@ def printConfig (inputFile):
         #fileAppend.write("M208 X280 Y102.9 Z287.5 A360000000 B1 S0\n")
         
         # Fan Power
-        print("INSERT FAN POWER (0 to 255):")
+        print("INSERT FAN POWER (0 to 255)\nDefault Value: 255, 255, 255")
         fileAppend.write(getInputArray(["M106 P0 S","\nM106 P1 S","\nM106 P2 S"],["255","255","255"]))
         
         # Temperature Settings
-        print("INSERT TEMPERATURE:")
+        print("INSERT TEMPERATURE\nDefault Value: 262, 300")
         fileAppend.write(getInputArray(["M143 H1 S","\nM143 H0 S"],["262","300"]))
         
         # Set Idle Timeout
-        print("INSERT IDLE TIMEOUT (IN SECONDS):")
+        print("INSERT IDLE TIMEOUT (IN SECONDS)\nDefault Value: 30\nRecommended Value: 43200")
         fileAppend.write(getInput("M84 S","30"))
 
         print("CONTINUING WITH TRANSLATION...")
@@ -170,9 +170,9 @@ def convertCoordinates(line):
     elif copy[0] == "M104" and "T" in copy[1]:
         tValue = get_number_from_string(line, "T")
         sValue = get_number_from_string(line, "S")
-        
-        result = "".join(["G10 P", str(int(tValue[0]) + 1), " S", sValue[
-            0], " R", str(int(sValue[0]) - 50)])
+        if (sValue[0] != ""):
+            result = "".join(["G10 P", str(int(tValue[0]) + 1), " S", sValue[
+                0], " R", str(int(sValue[0]) - 50)])
     elif "M104 S" in line:
         afterS = int(get_number_from_string(line, 'S')[0])
         afterR = afterS - 50
